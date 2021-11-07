@@ -4,6 +4,9 @@
 #pragma once
 
 int
+encfs_mapper_force_refresh_mounts(void);
+
+int
 encfs_mapper_refresh_mounts(const char *current_path);
 
 char *

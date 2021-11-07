@@ -298,6 +298,12 @@ err:
 }
 
 int
+encfs_mapper_force_refresh_mounts(void)
+{
+    return do_refresh_mounts();
+}
+
+int
 encfs_mapper_refresh_mounts(const char *current_path)
 {
     static struct timespec last_checked = {};
