@@ -8,7 +8,7 @@ cc = meson.get_compiler('c')
 dep_libdl = cc.find_library('dl')
 dep_threads = dependency('threads')
 
-src = [ 'precache.c', 'encfs_mapper.c', 'intercepted_functions.c' ]
+src = [ 'libprecache.c', 'encfs_mapper.c', 'intercepted_functions.c' ]
 
 c_args =  ['-Wall', '-Wextra', '-Werror', '-Wshadow', '-Wimplicit-fallthrough',
            '-Wno-unused-parameter']
