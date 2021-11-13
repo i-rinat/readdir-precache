@@ -8,6 +8,8 @@
 
 #define precache_oom() exit(-1)
 
+#define STR_AND_LENGTH(s) (s), sizeof(s) - 1
+
 static inline char *
 xstrdup(const char *src)
 {
@@ -33,4 +35,16 @@ xcalloc(size_t n, size_t sz)
     if (!ptr)
         precache_oom();
     return ptr;
+}
+
+static inline void *
+memappend(void *p, const void *str, size_t len)
+{
+    return memcpy(p, str, len) + len;
+}
+
+static inline void *
+memfill(void *p, char c, size_t count)
+{
+    return memset(p, c, count) + count;
 }
