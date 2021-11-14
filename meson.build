@@ -24,3 +24,9 @@ executable('precache',
             'segments.c', 'progress.c'],
            dependencies: [dep_libdl, dep_threads],
            c_args: common_c_args)
+
+executable('precache-dir',
+           ['precache_dir.c', 'encfs_mapper.c', 'intercepted_functions.c',
+            'segments.c', 'progress.c'],
+           dependencies: [dep_libdl, dep_threads],
+           c_args: common_c_args)
