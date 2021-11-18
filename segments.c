@@ -53,6 +53,11 @@ enumerate_file_segments(const char *fname, struct segment **segments,
         if (ioctl_res != 0)
             break;
 
+        if (fiemap->fm_mapped_extents == 0) {
+            // Some files don't have any extents.
+            break;
+        }
+
         for (uint32_t idx = 0; idx < fiemap->fm_mapped_extents; idx++) {
             struct fiemap_extent *ext = &fiemap->fm_extents[idx];
 
