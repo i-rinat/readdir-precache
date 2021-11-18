@@ -14,11 +14,14 @@
 #include <utlist.h>
 
 static void
-read_segment(struct segment *it)
+read_segment(struct segment *it, size_t *bytes_in_segment)
 {
     int fd = open(it->file_name, O_RDONLY);
     if (fd < 0)
         return;
+
+    if (bytes_in_segment)
+        *bytes_in_segment = 0;
 
     static char buf[512 * 1024];
     ssize_t to_read = it->extent_length;
@@ -37,6 +40,8 @@ read_segment(struct segment *it)
         }
         to_read -= bytes_read;
         ofs += bytes_read;
+        if (bytes_in_segment)
+            *bytes_in_segment += bytes_read;
     }
     close(fd);
 }
@@ -83,16 +88,23 @@ main(int argc, char *argv[])
         DL_SORT(segments, segment_comparator);
     printf("\n");
 
+    size_t total_bytes_read = 0;
     int count = 0;
     for (struct segment *it = segments; it != NULL; it = it->next) {
+        size_t bytes_in_segment = 0;
         display_progress_throttled("reading", ++count, total_segment_count);
-        read_segment(it);
+        read_segment(it, &bytes_in_segment);
+        total_bytes_read += bytes_in_segment;
     }
     display_progress_unthrottled("reading", total_segment_count,
                                  total_segment_count);
     printf("\n");
 
     free_segment_list(&segments);
+
+    const size_t one_MiB = 1024 * 1024;
+    printf("total data read: %zu MiB (%zu B)\n",
+           (total_bytes_read + one_MiB - 1) / one_MiB, total_bytes_read);
 
     return 0;
 }
