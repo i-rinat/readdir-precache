@@ -50,11 +50,15 @@ append_task(struct scan_task **tasks, const char *dir_name)
 }
 
 static void
-read_segment(int fd, struct segment *seg)
+read_segment(int fd, struct segment *seg, size_t *bytes_in_segment)
 {
     static char buf[512 * 1024];
     ssize_t to_read = seg->extent_length;
     off_t ofs = seg->physical_pos;
+
+    if (bytes_in_segment)
+        *bytes_in_segment = 0;
+
     while (to_read > 0) {
         ssize_t chunk_sz =
             to_read < (ssize_t)sizeof(buf) ? to_read : (ssize_t)sizeof(buf);
@@ -69,6 +73,8 @@ read_segment(int fd, struct segment *seg)
         }
         to_read -= bytes_read;
         ofs += bytes_read;
+        if (bytes_in_segment)
+            *bytes_in_segment += bytes_read;
     }
 }
 
@@ -173,6 +179,7 @@ main(int argc, char *argv[])
     }
 
     dev_t root_dir_st_dev = sb.st_dev;
+    size_t total_bytes_read = 0;
 
     struct scan_task *current_tasks = NULL;
     append_task(&current_tasks, root_dir);
@@ -203,9 +210,11 @@ main(int argc, char *argv[])
         DL_SORT(segments, segment_comparator);
         size_t segment_idx = 0;
         for (struct segment *seg = segments; seg != NULL; seg = seg->next) {
-            read_segment(raw_device_fd, seg);
+            size_t bytes_in_segment = 0;
+            read_segment(raw_device_fd, seg, &bytes_in_segment);
             display_progress_throttled("reading raw device", ++segment_idx,
                                        segment_count);
+            total_bytes_read += bytes_in_segment;
         }
         display_progress_unthrottled("reading raw device", segment_count,
                                      segment_count);
@@ -231,6 +240,10 @@ main(int argc, char *argv[])
     }
 
     free_task_list(&current_tasks);
+
+    const size_t one_MiB = 1024 * 1024;
+    printf("total data read: %zu MiB (%zu B)\n",
+           (total_bytes_read + one_MiB - 1) / one_MiB, total_bytes_read);
 
     return 0;
 }
