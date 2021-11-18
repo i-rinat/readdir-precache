@@ -9,6 +9,7 @@
 #include <fcntl.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <unistd.h>
 #include <utlist.h>
 
@@ -57,6 +58,26 @@ main(int argc, char *argv[])
         total_segment_count += file_segment_count;
     }
     display_progress_unthrottled("mapping", argc, argc);
+
+    if (!isatty(fileno(stdin))) {
+        int file_count = argc;
+        char line[128 * 1024];
+
+        while (fgets(line, sizeof(line), stdin)) {
+            size_t line_len = strlen(line);
+            while (line_len > 0 && line[line_len - 1] == '\n') {
+                line[line_len - 1] = '\0';
+                line_len -= 1;
+            }
+            file_count += 1;
+
+            size_t file_segment_count;
+            display_progress_throttled("mapping", file_count, file_count);
+            enumerate_file_segments(line, &segments, &file_segment_count);
+            total_segment_count += file_segment_count;
+        }
+        display_progress_unthrottled("mapping", file_count, file_count);
+    }
 
     if (segments)
         DL_SORT(segments, segment_comparator);
