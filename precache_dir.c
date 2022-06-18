@@ -88,7 +88,7 @@ derive_new_tasks(const char *dir_name, dev_t root_dir_st_dev,
     char buf[128 * 1024];
     int dir_fd = open(dir_name, O_RDONLY | O_DIRECTORY);
     if (dir_fd < 0) {
-        fprintf(stderr, "Error: can't open directory \"%s\"\n", dir_name);
+        fprintf(stderr, "\nError: can't open directory \"%s\"\n", dir_name);
         return;
     }
 
