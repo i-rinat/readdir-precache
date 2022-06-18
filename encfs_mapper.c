@@ -7,6 +7,7 @@
 #include "log.h"
 #include "mem.h"
 #include "ut_misc.h"
+#include "utils.h"
 #include <ctype.h>
 #include <dirent.h>
 #include <errno.h>
@@ -52,43 +53,6 @@ static struct front_to_back_mapping *front_to_back_map = NULL;
 static struct inode_to_path_mapping *inode_to_path_map = NULL;
 
 static UT_icd uint64_icd = {sizeof(uint64_t), NULL, NULL, NULL};
-
-static int
-file_get_contents(const char *file_name, UT_string *body)
-{
-    char buf[4096];
-    int fd = real_open(file_name, O_RDONLY);
-    if (fd == -1)
-        goto err_1;
-
-    utstring_clear(body);
-
-    size_t pos = 0;
-    while (1) {
-        ssize_t bytes_read = pread(fd, buf, sizeof(buf), pos);
-        if (bytes_read < 0) {
-            if (errno == EINTR)
-                continue;
-            goto err_2;
-        }
-        if (bytes_read == 0) {
-            // Sudden file size change?
-            break;
-        }
-
-        utstring_bincpy(body, buf, bytes_read);
-        pos += bytes_read;
-    }
-
-    close(fd);
-    return 0;
-
-err_2:
-    utstring_clear(body);
-    close(fd);
-err_1:
-    return -1;
-}
 
 static char *
 strdup_and_trim_slashes(const char *source)
