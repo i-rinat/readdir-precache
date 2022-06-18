@@ -40,11 +40,11 @@ xcalloc(size_t n, size_t sz)
 static inline void *
 memappend(void *p, const void *str, size_t len)
 {
-    return memcpy(p, str, len) + len;
+    return (char *)memcpy(p, str, len) + len;
 }
 
 static inline void *
 memfill(void *p, char c, size_t count)
 {
-    return memset(p, c, count) + count;
+    return (char *)memset(p, c, count) + count;
 }
