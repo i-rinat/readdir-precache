@@ -2,9 +2,11 @@
 // SPDX-License-Identifier: MIT
 
 #define _GNU_SOURCE
+#include "intercepted_functions.h"
 #include "mem.h"
 #include "progress.h"
 #include "segments.h"
+#include "utils.h"
 #include <dirent.h>
 #include <errno.h>
 #include <fcntl.h>
@@ -152,22 +154,91 @@ get_task_count(struct scan_task *task_list)
     return count;
 }
 
+static int
+common_prefix_length(const char *s1, const char *s2)
+{
+    int pos = 0;
+    while (s1[pos] && s2[pos] && s1[pos] == s2[pos])
+        pos++;
+    return pos;
+}
+
+static char *
+guess_device_for_path(const char *path)
+{
+    UT_string proc_mounts;
+    utstring_init(&proc_mounts);
+
+    int r = file_get_contents("/proc/mounts", &proc_mounts);
+    if (r != 0)
+        goto err;
+
+    char *const proc_mounts_start = utstring_body(&proc_mounts);
+    char *const proc_mounts_end =
+        proc_mounts_start + utstring_len(&proc_mounts);
+
+    int selected_mount_path_length = 0;
+    char *selected_device_path = NULL;
+
+    char *line_start = proc_mounts_start;
+    while (line_start < proc_mounts_end) {
+        char *line_end = strchr(line_start, '\n');
+        *line_end = '\0';
+
+        char *device_path = line_start;
+        char *device_path_end = strchr(line_start, ' ');
+        *device_path_end = '\0';
+
+        char *mount_path = device_path_end + 1;
+        char *mount_path_end = strchr(mount_path, ' ');
+        *mount_path_end = '\0';
+
+        if (device_path[0] == '/') {
+            int path_common_len = common_prefix_length(mount_path, path);
+            if (path_common_len > selected_mount_path_length) {
+                selected_mount_path_length = path_common_len;
+                selected_device_path = device_path;
+            }
+        }
+
+        line_start = line_end + 1;
+    }
+
+    if (selected_device_path)
+        selected_device_path = strdup(selected_device_path);
+
+err:
+    utstring_done(&proc_mounts);
+    return selected_device_path;
+}
+
 int
 main(int argc, char *argv[])
 {
-    if (argc <= 2) {
-        printf("Usage: precache-dir <root-dir> <raw-device>\n");
+    ensure_initialized();
+
+    if (argc < 2) {
+        printf("Usage: precache-dir <root-dir> [raw-device]\n");
         return 2;
     }
 
     const char *root_dir = argv[1];
-    const char *raw_device_file_name = argv[2];
+    char *raw_device_file_name = NULL;
+
+    if (argc == 2) {
+        // No raw-device file was provided. Try to guess.
+        raw_device_file_name = guess_device_for_path(root_dir);
+        printf("Raw device guessed by examining /proc/mounts: %s\n",
+               raw_device_file_name);
+    } else {
+        raw_device_file_name = strdup(argv[2]);
+    }
 
     int raw_device_fd = open(raw_device_file_name, O_RDONLY);
     if (raw_device_fd < 0) {
         fprintf(stderr, "Error: can't open raw device file %s\n",
                 raw_device_file_name);
-        return 1;
+        goto err;
     }
 
     struct stat sb;
@@ -175,7 +246,7 @@ main(int argc, char *argv[])
     if (lstat_ret != 0) {
         fprintf(stderr, "Error: can't stat %s\n", root_dir);
         close(raw_device_fd);
-        return 1;
+        goto err;
     }
 
     dev_t root_dir_st_dev = sb.st_dev;
@@ -245,5 +316,10 @@ main(int argc, char *argv[])
     printf("total data read: %zu MiB (%zu B)\n",
            (total_bytes_read + one_MiB - 1) / one_MiB, total_bytes_read);
 
+    free(raw_device_file_name);
     return 0;
+
+err:
+    free(raw_device_file_name);
+    return 1;
 }
