@@ -1,4 +1,4 @@
-// Copyright 2021  Rinat Ibragimov
+// Copyright 2021-2022  Rinat Ibragimov
 // SPDX-License-Identifier: MIT
 
 #define _GNU_SOURCE
