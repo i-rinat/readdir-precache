@@ -212,6 +212,21 @@ err:
     return selected_device_path;
 }
 
+static void
+make_readable_by_everyone(const char *path)
+{
+    UT_string str;
+    utstring_init(&str);
+    utstring_printf(&str, "sudo chmod o+r $(readlink -f \"%s\")", path);
+    printf("Trying to run command: '%s'\n", utstring_body(&str));
+    int status = system(utstring_body(&str));
+    utstring_done(&str);
+    if (status == 0)
+        printf("Command succeeded.\n");
+    else
+        printf("Command failed.\n");
+}
+
 int
 main(int argc, char *argv[])
 {
@@ -238,7 +253,13 @@ main(int argc, char *argv[])
     if (raw_device_fd < 0) {
         fprintf(stderr, "Error: can't open raw device file %s\n",
                 raw_device_file_name);
-        goto err;
+        make_readable_by_everyone(raw_device_file_name);
+        raw_device_fd = open(raw_device_file_name, O_RDONLY);
+        if (raw_device_fd < 0) {
+            fprintf(stderr, "Error: still can't open raw device file %s\n",
+                    raw_device_file_name);
+            goto err;
+        }
     }
 
     struct stat sb;
