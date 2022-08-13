@@ -219,8 +219,7 @@ cache_files(struct dirp_to_state_mapping *dstate)
     if (env_PRECACHE_LIMIT)
         cfg_cache_limit = atol(env_PRECACHE_LIMIT);
 
-    if (cfg_call_sync)
-        system("sync");
+    bool syncfs_was_invoked = false;
 
     size_t size_so_far = 0;
     size_t count = 0;
@@ -262,6 +261,11 @@ cache_files(struct dirp_to_state_mapping *dstate)
         if (fd < 0) {
             free(resolved_path);
             continue;
+        }
+
+        if (cfg_call_sync && !syncfs_was_invoked) {
+            syncfs(fd);
+            syncfs_was_invoked = true;
         }
 
         int res = fstat(fd, &sb);
