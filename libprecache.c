@@ -271,11 +271,13 @@ cache_files(struct dirp_to_state_mapping *dstate)
         int res = fstat(fd, &sb);
         if (res != 0) {
             free(resolved_path);
+            close(fd);
             break;
         }
 
         if (size_so_far + sb.st_size > cfg_cache_limit) {
             free(resolved_path);
+            close(fd);
             break;
         }
 
